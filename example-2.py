@@ -9,7 +9,7 @@ from pyspark.ml.recommendation import ALS
 from pyspark.ml.evaluation import RegressionEvaluator
 import webbrowser
 
-# Configurable file paths
+# File paths
 input_file_path = "/mnt/c/Users/rubva/Documents/amazon-meta.txt"
 output_file_path = "/mnt/c/Users/rubva/GitHub/WSL_Ubuntu_20.04/amazon_recommendations_output.csv"
 
@@ -116,15 +116,31 @@ def save_recommendations_to_csv(recommendations_df, output_file_path, int_to_asi
 def visualize_recommendations(output_file_path):
     df = pd.read_csv(output_file_path)
 
-    # Top 10 Recommended Products
-    top_items = df['Title'].value_counts().head(10)
-    plt.figure(figsize=(10, 5))
-    sns.barplot(x=top_items.values, y=top_items.index)
-    plt.title('Top 10 Most Recommended Products')
+    # Top 10 product titles by count
+    top_titles = df['Title'].value_counts().head(10)
+    top_df = df[df['Title'].isin(top_titles.index)][['Title', 'Group']].drop_duplicates()
+
+    # Map title → group
+    title_group_map = dict(zip(top_df['Title'], top_df['Group']))
+    titles_with_groups = [f"{title} ({title_group_map.get(title, 'N/A')})" for title in top_titles.index]
+
+    # Print formatted info table
+    print("\n[INFO] Top 10 Product Groups:")
+    formatted_table = pd.DataFrame({
+        'Title': top_titles.index,
+        'Group': [title_group_map.get(title, 'N/A') for title in top_titles.index]
+    })
+    print(formatted_table.to_string(index=False))
+
+    # Save bar chart with title + group as label
+    plt.figure(figsize=(12, 6))
+    sns.barplot(x=top_titles.values, y=titles_with_groups)
+    plt.title('Top 10 Most Recommended Products (with Groups)')
     plt.xlabel('Recommendation Count')
-    plt.ylabel('Product Title')
+    plt.ylabel('Product Title (Group)')
     plt.tight_layout()
-    plt.show()
+    plt.savefig("top_10_recommendations.png")
+    plt.close()
 
     # User-Item Heatmap
     sample = df.sample(n=min(1000, len(df)))
@@ -133,7 +149,10 @@ def visualize_recommendations(output_file_path):
     sns.heatmap(pivot, cmap="YlGnBu", cbar_kws={'label': 'Predicted Rating'})
     plt.title('User-Item Recommendation Heatmap')
     plt.tight_layout()
-    plt.show()
+    plt.savefig("user_item_heatmap.png")
+    plt.close()
+
+    print("[INFO] Charts saved: top_10_recommendations.png, user_item_heatmap.png")
 
 def main():
     spark = None
