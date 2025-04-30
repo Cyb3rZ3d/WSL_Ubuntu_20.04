@@ -1,0 +1,34 @@
+Proposed Project Plan
+
+Title:
+    Collaborative Filtering for Amazon Co-Purchase Recommendation Using Apache Spark ALS
+
+Project Goal:
+    Build a scalable recommendation engine that uses Alternating Least Squares (ALS) to predict and recommend products based on co-purchasing behavior in Amazon’s product network. Evaluate model performance using RMSE and visualize top recommendations using Power BI.
+
+High-Level Steps:
+    Data Exploration & Cleaning:
+
+    Parse raw product data to extract item IDs, user IDs (if available), and co-purchase links.
+
+    Build a user-item matrix.
+
+Data Preprocessing:
+
+    Convert into Spark DataFrames.
+
+    Prepare data in the form (user, item, rating) — even if you simulate ratings using co-purchase frequency.
+
+Model Building:
+
+    Use pyspark.ml.recommendation.ALS.
+
+    Train/test split and train model.
+
+Model Evaluation:
+
+    Use RMSE to evaluate prediction accuracy.
+
+Visualization (Matplotlib):
+
+    Show product clusters, top-N recommendations, user-item heatmaps.
