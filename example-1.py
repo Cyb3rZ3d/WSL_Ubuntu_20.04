@@ -4,23 +4,29 @@ import pandas as pd
 from pyspark.sql import SparkSession, Row
 from pyspark.ml.recommendation import ALS
 from pyspark.ml.evaluation import RegressionEvaluator
+import webbrowser
 
 # ---------------------------
 # CONFIGURABLE PATHS
 # ---------------------------
 input_file_path = "/mnt/c/Users/rubva/Documents/amazon-meta.txt"
 output_file_path = "/mnt/c/Users/rubva/GitHub/WSL_Ubuntu_20.04/amazon_recommendations_output.csv"
-# input_file_path = "/home/rvaldez/Desktop/amazon-meta.txt"
-# output_file_path = "/home/rvaldez/Documents/MS-CSEC/5_Fall_2025_5th_Semester/CSEC5311_BigDataAnalysisSecurity/Semester Project/amazon_project/amazon_recommendations_output.csv"
-# input_file_path = r"C:\Users\rubva\Documents\amazon-meta.txt"
-# output_file_path = r"C:\Users\rubva\GitHub\MS-CSEC\5_Fall_2025_5th_Semester\CSEC5311_BigDataAnalysisSecurity\Semester Project\amazon_project\amazon_recommendations_output.csv"
 
 
-
-# ---------------------------
-# FUNCTIONS
-# ---------------------------
 def load_data(spark, input_file):
+    """
+    Loads and parses the amazon-meta.txt dataset into a Spark DataFrame for collaborative filtering.
+
+    Args:
+        spark (SparkSession): The active Spark session.
+        input_file (str): Path to the dataset file.
+
+    Returns:
+        ratings_df (DataFrame): Spark DataFrame containing userId, itemId, and rating.
+        asin_to_int (dict): Mapping of ASIN to integer user/item ID.
+        int_to_asin (dict): Reverse mapping from integer ID to ASIN.
+        asin_to_info (dict): Dictionary mapping ASIN to (title, group).
+    """
     print("[INFO] Loading and processing data...")
 
     if not os.path.isfile(input_file):
@@ -85,8 +91,16 @@ def load_data(spark, input_file):
     return ratings_df, asin_to_int, int_to_asin, asin_to_info
 
 
-
 def train_als(ratings_df):
+    """
+    Trains an ALS (Alternating Least Squares) model on the ratings DataFrame.
+
+    Args:
+        ratings_df (DataFrame): Spark DataFrame containing userId, itemId, and rating.
+
+    Returns:
+        ALSModel: Trained ALS model.
+    """
     print("[INFO] Training ALS model...")
     als = ALS(
         maxIter=10,
@@ -102,12 +116,31 @@ def train_als(ratings_df):
 
 
 def generate_recommendations(model, user_count=10):
+    """
+    Generates top-N product recommendations for users.
+
+    Args:
+        model (ALSModel): Trained ALS model.
+        user_count (int): Number of users to include in the output.
+
+    Returns:
+        DataFrame: Spark DataFrame of user recommendations.
+    """
     print("[INFO] Generating recommendations...")
     user_recs = model.recommendForAllUsers(10)
     return user_recs.limit(user_count)
 
 
 def save_recommendations_to_csv(recommendations_df, output_file_path, int_to_asin, asin_to_info):
+    """
+    Saves the top-N recommendations to a CSV file.
+
+    Args:
+        recommendations_df (DataFrame): Spark DataFrame containing user recommendations.
+        output_file_path (str): Path to the output CSV file.
+        int_to_asin (dict): Mapping from integer item ID to ASIN.
+        asin_to_info (dict): Dictionary mapping ASIN to (title, group).
+    """
     print(f"[INFO] Saving recommendations to: {output_file_path}")
     pdf = recommendations_df.toPandas()
 
@@ -133,19 +166,18 @@ def save_recommendations_to_csv(recommendations_df, output_file_path, int_to_asi
     print("[INFO] File saved successfully.")
 
 
-
-# ---------------------------
-# MAIN
-# ---------------------------
-import webbrowser
-import time
-
-import webbrowser
-
 def main():
+    """
+    Main execution flow:
+    - Initializes Spark session
+    - Loads and processes the dataset
+    - Trains ALS model
+    - Generates top-N recommendations
+    - Saves the recommendations to CSV
+    - Opens Spark Web UI for visualization
+    """
     spark = None
     try:
-        # Start Spark session
         spark = SparkSession.builder \
             .appName("AmazonRecommendationSystem") \
             .config("spark.driver.memory", "4g") \
@@ -155,25 +187,17 @@ def main():
         spark.sparkContext.setLogLevel("ERROR")
         print("[INFO] Spark session started successfully.")
 
-        # Open Spark Web UI in browser
         web_ui_url = "http://localhost:4040"
         print(f"[INFO] Spark Web UI is available at: {web_ui_url}")
         webbrowser.open(web_ui_url)
 
-        # Load and process data
         ratings_df, asin_to_int, int_to_asin, asin_to_info = load_data(spark, input_file_path)
-
-        # Train ALS model
         model = train_als(ratings_df)
-
-        # Generate recommendations
         recommendations_df = generate_recommendations(model)
-
-        # Save recommendations
         save_recommendations_to_csv(recommendations_df, output_file_path, int_to_asin, asin_to_info)
 
         print("\n[INFO] Processing complete.")
-        input("[INFO] Press ENTER to close the Spark session and exit...")  # Manual pause here
+        input("[INFO] Press ENTER to close the Spark session and exit...")
 
     except Exception as e:
         print(f"[ERROR] {e}")
